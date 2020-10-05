@@ -23,7 +23,6 @@ import sagemaker.amazon.common as smac
 from sagemaker import get_execution_role
 
 
-
 role = get_execution_role()
 
 
@@ -80,6 +79,31 @@ def crop_imgs(set_name, add_pixels_value=0):
         set_new.append(new_img)
 
     return np.array(set_new)
+
+def split_load_crop(img_path, train_dir, test_dir, val_dir, img_size):
+    # split the data by train/val/test
+    for CLASS in os.listdir(img_path):
+        if not CLASS.startswith('.'):
+            IMG_NUM = len(os.listdir(img_path + CLASS))
+            for (n, FILE_NAME) in enumerate(os.listdir(img_path + CLASS)):
+                img = img_path + CLASS + '/' + FILE_NAME
+                if n < 5:
+                    shutil.copy(img, test_dir + CLASS.upper() + '/' + FILE_NAME)
+                elif n < 0.8*IMG_NUM:
+                    shutil.copy(img, train_dir + CLASS.upper() + '/' + FILE_NAME)
+                else:
+                    shutil.copy(img, val_dir + CLASS.upper() + '/' + FILE_NAME)
+    # use predefined function to load the image data into workspace
+    X_train, y_train, labels = load_data(train_dir, img_size)
+    X_test, y_test, _ = load_data(test_dir, img_size)
+    X_val, y_val, _ = load_data(val_dir, img_size)
+    X_train_crop = crop_imgs(set_name=X_train)
+    X_val_crop = crop_imgs(set_name=X_val)
+    X_test_crop = crop_imgs(set_name=X_test)
+    save_new_images(X_train_crop, y_train, folder_name='TRAIN_CROP/')
+    save_new_images(X_val_crop, y_val, folder_name='VAL_CROP/')
+    save_new_images(X_test_crop, y_test, folder_name='TEST_CROP/')
+
 
 def save_new_images(x_set, y_set, folder_name):
     i = 0
